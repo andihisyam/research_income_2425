@@ -1,0 +1,35 @@
+{
+  "refreshDate": "2026-11-19T14:07:05+07:00",
+  "sources": [
+    "Research Income _ Januari - Desember 24 dan 25.xlsx",
+    "Research_Income_Tracker_2024_2025.xlsx",
+    "Keluaran final PHASE3_FRACTIONAL_ATTRIBUTION_REVISION"
+  ],
+  "baseline": [
+    {
+      "year": 2024,
+      "total": 23931523665,
+      "industry": 1793964107,
+      "nonIndustry": 22137559558,
+      "unclassified": 0
+    },
+    {
+      "year": 2025,
+      "total": 22614422028,
+      "industry": 2376412648,
+      "nonIndustry": 20238009380,
+      "unclassified": 0
+    }
+  ],
+  "coverage": {
+    "matchedFraction": 44634462644.666664,
+    "unallocatedFraction": 282492833.3333333,
+    "withoutInternalNames": 1628990215.0
+  },
+  "limitations": [
+    "Snapshot statis, bukan data waktu nyata.",
+    "DPPM dapat mencerminkan unit/program yang tercatat; pemberi dana akhir tidak disimpulkan tanpa verifikasi.",
+    "Atribusi fakultas/prodi bersifat proporsional berdasarkan personel internal yang terhubung, bukan pembayaran pribadi.",
+    "Jumlah proyek adalah proyek teridentifikasi dengan pengelompokan konservatif, bukan klaim deduplikasi universal."
+  ]
+}

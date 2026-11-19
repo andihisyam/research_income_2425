@@ -1,0 +1,30 @@
+{
+  "name": "ums-research-income-dashboard",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "data:build": "python3 scripts/build_data.py",
+    "data:validate": "python3 scripts/validate_data.py",
+    "dev": "vite --host 0.0.0.0",
+    "test": "vitest run",
+    "build": "npm run data:build && npm run data:validate && vue-tsc --noEmit && vite build",
+    "preview": "vite preview --host 0.0.0.0"
+  },
+  "dependencies": {
+    "@vitejs/plugin-vue": "latest",
+    "echarts": "latest",
+    "pinia": "latest",
+    "vue": "latest",
+    "vue-echarts": "latest",
+    "vue-router": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "jsdom": "latest",
+    "typescript": "latest",
+    "vite": "latest",
+    "vitest": "latest",
+    "vue-tsc": "latest"
+  }
+}
