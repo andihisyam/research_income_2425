@@ -14,3 +14,8 @@ export function unitShare(p:Project,f:Filters){if(f.faculty==='Semua'&&f.prodi==
 export function filteredValue(components:Component[],projects:Project[],f:Filters,category?:string){const pm=new Map(projects.map(p=>[p.projectId,p]));return components.filter(c=>baseMatch(c,f)&&(!category||c.category===category)).reduce((s,c)=>s+c.value*unitShare(pm.get(c.projectId)!,f),0)}
 export function filteredProjects(components:Component[],projects:Project[],f:Filters){const ids=new Set(components.filter(c=>baseMatch(c,f)).filter(c=>unitShare(projects.find(p=>p.projectId===c.projectId)!,f)>0).map(c=>c.projectId));return projects.filter(p=>ids.has(p.projectId))}
 export function groupWeighted(components:Component[],projects:Project[],f:Filters,key:(c:Component)=>string){const pm=new Map(projects.map(p=>[p.projectId,p])),m=new Map<string,number>();for(const c of components)if(baseMatch(c,f)){const v=c.value*unitShare(pm.get(c.projectId)!,f);m.set(key(c),(m.get(key(c))||0)+v)}return [...m].map(([name,value])=>({name,value})).sort((a,b)=>b.value-a.value)}
+export function annualBreakdown(components:Component[],projects:Project[],f:Filters){
+ const years=f.year?[f.year]:[...new Set(components.map(c=>c.year))].sort()
+ const categories=(f.category==='Industri'||f.category==='Non-Industri'?[f.category]:['Industri','Non-Industri']) as ('Industri'|'Non-Industri')[]
+ return{years,series:categories.map(name=>({name,values:years.map(year=>filteredValue(components,projects,{...f,year,category:name},name))}))}
+}
