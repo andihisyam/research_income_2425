@@ -44,7 +44,7 @@ const yoy=computed(()=>{
 
 const annualOption=computed(()=>{
  if(!s.data)return{}
- const vals=(year:number,cat:string)=>filteredValue(s.data!.components,s.data!.projects,{...s.filters,year,category:'Semua'},cat)
+ const vals=(year:number,cat:string)=>filteredValue(s.data!.components,s.data!.projects,{...s.filters,year,category:cat},cat)
  const ind=[vals(2024,'Industri'),vals(2025,'Industri')],non=[vals(2024,'Non-Industri'),vals(2025,'Non-Industri')]
  return{animationDuration:500,tooltip:{trigger:'axis',formatter:(ps:any[])=>{const i=ps[0].dataIndex,total=ind[i]+non[i];return `<b>${2024+i}</b><br>${ps.map(p=>`${p.marker}${p.seriesName}: ${rpFull(p.value)} (${pct(total?p.value/total*100:0)})`).join('<br>')}<br><b>Total: ${rpFull(total)}</b>`}},legend:{top:0},grid:{left:54,right:22,top:46,bottom:36},xAxis:{type:'category',data:['2024','2025']},yAxis:{type:'value',axisLabel:{formatter:(v:number)=>rpShort(v).replace('Rp','')}},series:[{name:'Industri',type:'bar',stack:'total',data:ind,itemStyle:{color:'#e09132'}},{name:'Non-Industri',type:'bar',stack:'total',data:non,itemStyle:{color:'#1d7a5d'},label:{show:true,position:'top',formatter:(p:any)=>rpShort(ind[p.dataIndex]+non[p.dataIndex])}}]}
 })
