@@ -4,7 +4,7 @@ export interface Component{componentId:string;projectId:string;year:number;month
 export interface Project{projectId:string;year:number;title:string;manager:string;subject:string;program:string;sourceRaw:string;sourceStandard:string;categories:Category[];value:number;componentCount:number;people:Person[];internalPeopleNames:string[];faculties:string[];prodis:string[]}
 export interface DashboardData{generatedAt:string;sourceRevisionMtime:string;annual:{year:number;total:number;industry:number;nonIndustry:number;unclassified:number}[];components:Component[];projects:Project[];qa:Record<string,number>;groupingMethod:string}
 export interface Filters{year:number|null;category:string;source:string;program:string;faculty:string;subject:string;prodi:string}
-export const defaultFilters=():Filters=>({year:2025,category:'Semua',source:'Semua',program:'Semua',faculty:'Semua',subject:'Semua',prodi:'Semua'})
+export const defaultFilters=():Filters=>({year:null,category:'Semua',source:'Semua',program:'Semua',faculty:'Semua',subject:'Semua',prodi:'Semua'})
 export const rpFull=(n:number)=>new Intl.NumberFormat('id-ID',{style:'currency',currency:'IDR',maximumFractionDigits:0}).format(Math.round(n)).replace('Rp','Rp')
 export const rpShort=(n:number)=>{const a=Math.abs(n),sign=n<0?'−':'';if(a>=1e9)return `${sign}Rp${(a/1e9).toLocaleString('id-ID',{maximumFractionDigits:2})} miliar`;if(a>=1e6)return `${sign}Rp${(a/1e6).toLocaleString('id-ID',{maximumFractionDigits:2})} juta`;return sign+rpFull(a)}
 export const pct=(n:number)=>`${n<0?'−':''}${Math.abs(n).toLocaleString('id-ID',{minimumFractionDigits:2,maximumFractionDigits:2})}%`

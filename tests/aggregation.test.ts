@@ -5,6 +5,9 @@ const components:Component[]=[{componentId:'c',projectId:'p1',year:2025,month:'J
 describe('agregasi tunggal',()=>{it('menghitung baseline tanpa menggandakan relasi',()=>expect(filteredValue(components,projects,defaultFilters())).toBe(100));it('menggunakan atribusi proporsional untuk fakultas',()=>expect(filteredValue(components,projects,{...defaultFilters(),faculty:'FT'})).toBe(50));it('mengelompokkan sumber pada konteks filter',()=>expect(groupWeighted(components,projects,defaultFilters(),c=>c.sourceStandard)).toEqual([{name:'X',value:100}]));it('memformat rupiah Indonesia',()=>expect(rpShort(22614422028)).toContain('Rp22,61 miliar'))})
 
 describe('interaksi filter grafik',()=>{
+ it('membuka dashboard tanpa filter tahun aktif',()=>{
+  expect(defaultFilters().year).toBeNull()
+ })
  it('memilih nilai baru dan menghapus nilai yang diklik ulang',()=>{
   expect(nextSelection('Semua','FT')).toBe('FT')
   expect(nextSelection('FT','FT')).toBe('Semua')
