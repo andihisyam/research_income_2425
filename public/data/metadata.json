@@ -1,5 +1,5 @@
 {
-  "refreshDate": "2026-11-19T14:07:05+07:00",
+  "refreshDate": "2026-11-24T09:06:44+07:00",
   "sources": [
     "Research Income _ Januari - Desember 24 dan 25.xlsx",
     "Research_Income_Tracker_2024_2025.xlsx",
@@ -22,14 +22,14 @@
     }
   ],
   "coverage": {
-    "matchedFraction": 44634462644.666664,
-    "unallocatedFraction": 282492833.3333333,
+    "matchedFraction": 44916955478.0,
+    "unallocatedFraction": 0.0,
     "withoutInternalNames": 1628990215.0
   },
   "limitations": [
     "Snapshot statis, bukan data waktu nyata.",
     "DPPM dapat mencerminkan unit/program yang tercatat; pemberi dana akhir tidak disimpulkan tanpa verifikasi.",
-    "Atribusi fakultas/prodi bersifat proporsional berdasarkan personel internal yang terhubung, bukan pembayaran pribadi.",
+    "Pendanaan proyek dipetakan secara proporsional melalui personel internal; pendapatan laboratorium dipetakan langsung melalui program studi/unit pemilik yang tercatat pada sumber.",
     "Jumlah proyek adalah proyek teridentifikasi dengan pengelompokan konservatif, bukan klaim deduplikasi universal."
   ]
 }
