@@ -24,10 +24,10 @@ describe('interaksi filter grafik',()=>{
   expect(annualBreakdown(components,projects,{...defaultFilters(),year:2025,category:'Industri'})).toEqual({years:[2025],series:[{name:'Industri',values:[100]}]})
  })
  it('memetakan pendapatan laboratorium melalui unit pemilik',()=>{
-  const labProject:Project={projectId:'lab',year:2025,title:'Pendapatan laboratorium',manager:'Laboratorium',subject:'Engineering',program:'Belum teridentifikasi',sourceRaw:'Laboratorium',sourceStandard:'Laboratorium',categories:['Industri'],value:200,componentCount:1,people:[],internalPeopleNames:[],faculties:['FT'],prodis:['Teknik Sipil'],ownerFaculty:'FT',ownerProdi:'Teknik Sipil'}
+  const labProject:Project={projectId:'lab',year:2025,title:'Pendapatan laboratorium',manager:'Laboratorium',subject:'Engineering',program:'Belum teridentifikasi',sourceRaw:'Laboratorium',sourceStandard:'Laboratorium',categories:['Industri'],value:200,componentCount:1,people:[],internalPeopleNames:[],faculties:['FT'],prodis:['Program Studi Teknik Sipil'],ownerFaculty:'FT',ownerProdi:'Program Studi Teknik Sipil'}
   const labComponent:Component={componentId:'lab-c',projectId:'lab',year:2025,month:'—',manager:'Laboratorium',subject:'Engineering',program:'Belum teridentifikasi',sourceRaw:'Laboratorium',sourceStandard:'Laboratorium',sourceNote:'',category:'Industri',value:200,sourceCell:'Laboratorium!F24'}
   expect(filteredValue([labComponent],[labProject],{...defaultFilters(),faculty:'FT'})).toBe(200)
   expect(filteredValue([labComponent],[labProject],{...defaultFilters(),faculty:'FIK'})).toBe(0)
-  expect(filteredValue([labComponent],[labProject],{...defaultFilters(),prodi:'Teknik Sipil'})).toBe(200)
+  expect(filteredValue([labComponent],[labProject],{...defaultFilters(),prodi:'Program Studi Teknik Sipil'})).toBe(200)
  })
 })

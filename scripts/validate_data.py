@@ -32,8 +32,11 @@ assert abs((sum(c['value'] for c in d['components'])-mapped_dashboard)-d['qa']['
 assert d['qa']['fraction_unallocated']==0
 lab_projects=[p for p in d['projects'] if p['manager']=='Laboratorium']
 assert len(lab_projects)==24 and all(p.get('ownerFaculty') and p.get('ownerProdi') for p in lab_projects)
+assert all(p['ownerProdi']=='FKIP' or p['ownerProdi'].startswith('Program Studi ') for p in lab_projects)
 assert abs(sum(p['value'] for p in lab_projects)-d['qa']['projects_without_names_value'])<0.01
 lab_by_faculty=defaultdict(int)
 for p in lab_projects: lab_by_faculty[p['ownerFaculty']]+=p['value']
 assert dict(lab_by_faculty)=={'FT':571135000,'FKIP':74472500,'FF':630961413,'FIK':11991000,'FK':260907060,'Fapsi':79523242}
+assert d.get('facultyProfiles') and any(x['faculty']=='FT' and x['allLecturers']==144 for x in d['facultyProfiles'])
+assert any(x.get('hIndex') is not None for p in d['projects'] for x in p['people'] if x['matched'])
 print('VALID: baseline 2024/2025, kategori, ID unik, relasi, dan bucket atribusi rekonsiliasi 100%.')
