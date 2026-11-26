@@ -47,6 +47,7 @@ export interface Project {
   prodis: string[];
   ownerFaculty?: string;
   ownerProdi?: string;
+  status?: string;
 }
 export interface FacultyProfile {
   faculty: string;
@@ -112,6 +113,26 @@ export const displayProdiName = (name: string) =>
   name.replace(/^Program Studi\s+/i, "").trim();
 export const nextSelection = (current: string, clicked: string) =>
   current === clicked ? "Semua" : clicked;
+export const fundingDimensionMatch = (
+  component: Component,
+  mode: "sumber" | "program",
+  name: string,
+) => (mode === "sumber" ? component.sourceStandard : component.program) === name;
+export const adaptiveCategoryChartHeight = (count: number) =>
+  Math.max(220, count * 58 + 70);
+export const hasScrollBelow = (
+  scrollHeight: number,
+  clientHeight: number,
+  scrollTop: number,
+) =>
+  scrollHeight > clientHeight + 1 &&
+  scrollTop + clientHeight < scrollHeight - 1;
+export const normalizedBarPercent = (value: number, maximum: number) =>
+  maximum > 0 ? Math.max(0, Math.min(100, (value / maximum) * 100)) : 0;
+export const interactiveBarStates = {
+  emphasis: { focus: "self", itemStyle: { opacity: 1 } },
+  blur: { itemStyle: { opacity: 0.28 } },
+} as const;
 export function baseMatch(c: Component, f: Filters) {
   return (
     (!f.year || c.year === f.year) &&
@@ -123,13 +144,13 @@ export function baseMatch(c: Component, f: Filters) {
 }
 export function unitShare(p: Project, f: Filters) {
   if (f.faculty === "Semua" && f.prodi === "Semua") return 1;
-  if (!p.value) return 0;
-  if (p.manager === "Laboratorium") {
+  if (p.ownerFaculty || p.ownerProdi) {
     return (f.faculty === "Semua" || p.ownerFaculty === f.faculty) &&
       (f.prodi === "Semua" || p.ownerProdi === f.prodi)
       ? 1
       : 0;
   }
+  if (!p.value) return 0;
   return (
     p.people
       .filter(

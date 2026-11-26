@@ -18,7 +18,8 @@ import {
   displayProdiName,
   filteredProjects,
   filteredValue,
-  nextSelection,
+  fundingDimensionMatch,
+  interactiveBarStates,
   pct,
   rpFull,
   rpShort,
@@ -166,7 +167,7 @@ const annualModalProjects = computed(() => {
         .reduce((sum, c) => sum + c.value * share, 0);
       if (!attribution) return null;
       const prodis =
-        project.manager === "Laboratorium" && project.ownerProdi
+        project.ownerProdi
           ? [project.ownerProdi]
           : project.people
               .filter(
@@ -259,26 +260,18 @@ const rankingOption = computed(() => {
               : "#2d6a8a",
           borderRadius: [0, 5, 5, 0],
         },
-        emphasis: { focus: "self", itemStyle: { opacity: 0.78 } },
+        ...interactiveBarStates,
       },
     ],
   };
 });
-function selectSource(name: string) {
-  if (!name) return;
-  if (sourceMode.value === "sumber")
-    s.filters.source = nextSelection(s.filters.source, name);
-  else s.filters.program = nextSelection(s.filters.program, name);
-}
-function sourceClick(event: any) {
-  selectSource(String(event?.name || ""));
-}
 function clearSource() {
   if (sourceMode.value === "sumber") s.filters.source = "Semua";
   else s.filters.program = "Semua";
 }
 const sourceModalOpen = ref(false);
 const selectedSourceName = ref("");
+const selectedSourceMode = ref<"sumber" | "program">("sumber");
 const sourceModalProjects = computed(() => {
   const name = selectedSourceName.value;
   if (!name || !s.data) return [];
@@ -286,17 +279,20 @@ const sourceModalProjects = computed(() => {
     .map((project) => {
       const share = unitShare(project, s.filters);
       if (share <= 0) return null;
-      const attribution = s
+      const matchingComponents = s
         .data!.components.filter(
           (c) =>
             c.projectId === project.projectId &&
-            c.sourceStandard === name &&
+            fundingDimensionMatch(c, selectedSourceMode.value, name) &&
             baseMatch(c, s.filters),
-        )
-        .reduce((sum, c) => sum + c.value * share, 0);
-      if (!attribution) return null;
+        );
+      if (!matchingComponents.length) return null;
+      const attribution = matchingComponents.reduce(
+        (sum, c) => sum + c.value * share,
+        0,
+      );
       const prodis =
-        project.manager === "Laboratorium" && project.ownerProdi
+        project.ownerProdi
           ? [project.ownerProdi]
           : project.people
               .filter(
@@ -340,8 +336,8 @@ function openSourceModal(payload: any) {
     typeof payload === "number"
       ? sourceChartRows.value[payload]?.name
       : payload?.name || payload?.data?.name;
-  if (sourceMode.value !== "sumber") return selectSource(String(name || ""));
   selectedSourceName.value = String(name || "");
+  selectedSourceMode.value = sourceMode.value;
   sourceModalPage.value = 1;
   sourceModalOpen.value = Boolean(name);
 }
@@ -367,7 +363,7 @@ const facultyRows = computed(() => {
   if (!s.data) return [];
   const map = new Map<string, number>();
   for (const p of s.projects) {
-    if (p.manager === "Laboratorium") {
+    if (p.ownerFaculty) {
       if (p.ownerFaculty)
         map.set(p.ownerFaculty, (map.get(p.ownerFaculty) || 0) + p.value);
       continue;
@@ -408,6 +404,7 @@ const facultyOption = computed(() => {
         type: "bar",
         data: d.map((x) => x.value),
         itemStyle: { color: "#5b7f37", borderRadius: [0, 5, 5, 0] },
+        ...interactiveBarStates,
       },
     ],
   };
@@ -447,6 +444,7 @@ const topProjectOption = computed(() => {
         type: "bar",
         data: d.map((x) => ({ value: x.value, projectId: x.projectId })),
         itemStyle: { color: "#176448", borderRadius: [0, 5, 5, 0] },
+        ...interactiveBarStates,
       },
     ],
   };
@@ -670,11 +668,6 @@ function clear(k: string) {
       <article class="kpi">
         <span>{{ kpiLabel }}</span
         ><strong>{{ rpShort(s.total) }}</strong
-        ><small>{{
-          contextual
-            ? "Atribusi personel dan pendapatan laboratorium unit"
-            : "Satu komponen dihitung sekali"
-        }}</small
         ><template v-if="yoy"
           ><br /><small :class="yoy.value < 0 ? 'down' : 'up'"
             >{{ pct(yoy.rate) }} · 2025 dibanding 2024</small
@@ -683,22 +676,15 @@ function clear(k: string) {
       </article>
       <article class="kpi orange">
         <span>Pendapatan dari Industri</span
-        ><strong>{{ rpShort(s.industry) }}</strong
-        ><small>{{
-          contextual ? "Personel dan laboratorium unit" : "Komponen tercatat"
-        }}</small>
+        ><strong>{{ rpShort(s.industry) }}</strong>
       </article>
       <article class="kpi green">
         <span>Pendapatan Non-Industri</span
-        ><strong>{{ rpShort(s.nonIndustry) }}</strong
-        ><small>{{
-          contextual ? "Personel dan laboratorium unit" : "Komponen tercatat"
-        }}</small>
+        ><strong>{{ rpShort(s.nonIndustry) }}</strong>
       </article>
       <article class="kpi">
         <span>Jumlah Proyek Teridentifikasi</span
-        ><strong>{{ s.projects.length.toLocaleString("id-ID") }}</strong
-        ><small>Proyek unik berdasarkan filter aktif</small>
+        ><strong>{{ s.projects.length.toLocaleString("id-ID") }}</strong>
       </article>
     </section>
     <section class="dashboard-overview-grid">
@@ -712,8 +698,7 @@ function clear(k: string) {
               }}
             </h2>
             <p>
-              Klik bar untuk memilih, klik ulang atau area kosong untuk
-              menghapus pilihan
+              Klik bar untuk membuka rincian proyek.
             </p>
           </div>
           <select v-model="sourceMode">
@@ -734,7 +719,6 @@ function clear(k: string) {
           full-row-clickable
           @click="openSourceModal"
           @category="openSourceModal"
-          @blank="clearSource"
         /><button class="subtle" @click="showAllSources = !showAllSources">
           {{ showAllSources ? "Tampilkan 10 terbesar" : "Lihat semua" }}
         </button>
@@ -744,8 +728,7 @@ function clear(k: string) {
           <div>
             <h2>Distribusi Pendanaan menurut Fakultas</h2>
             <p>
-              Klik bar fakultas untuk membuka detail pendanaan, program studi,
-              proyek, personel, dan kapasitas riset
+              Klik bar fakultas untuk membuka detail pendanaan.
             </p>
           </div>
         </div>
@@ -923,7 +906,7 @@ function clear(k: string) {
         @click="closeSourceModal"
       >
         ×</button
-      ><span class="eyebrow">RINCIAN SUMBER PENDANAAN</span>
+      ><span class="eyebrow">RINCIAN {{ selectedSourceMode === "sumber" ? "SUMBER PENDANAAN" : "PROGRAM / SKEMA" }}</span>
       <h2>{{ selectedSourceName }}</h2>
       <div class="prodi-modal-summary">
         <div>
@@ -936,7 +919,7 @@ function clear(k: string) {
         </div>
       </div>
       <div v-if="!sourceModalProjects.length" class="empty">
-        Tidak ada proyek untuk sumber pendanaan ini pada filter aktif.
+        Tidak ada proyek untuk {{ selectedSourceMode === "sumber" ? "sumber pendanaan" : "program / skema" }} ini pada filter aktif.
       </div>
       <div v-else class="prodi-modal-table-wrap">
         <table>

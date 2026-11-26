@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { RouterLink, useRoute } from "vue-router";
 import { use } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
@@ -13,6 +13,10 @@ import {
 import InteractiveChart from "../components/InteractiveChart.vue";
 import { useDashboardStore } from "../stores/dashboard";
 import {
+  adaptiveCategoryChartHeight,
+  hasScrollBelow,
+  interactiveBarStates,
+  normalizedBarPercent,
   rpFull,
   rpShort,
   displayProdiName,
@@ -38,8 +42,8 @@ const faculty = computed(() =>
 );
 
 function shareFor(p: Project, code: string) {
+  if (p.ownerFaculty) return p.ownerFaculty === code ? 1 : 0;
   if (!p.value) return 0;
-  if (p.manager === "Laboratorium") return p.ownerFaculty === code ? 1 : 0;
   return (
     p.people
       .filter((x) => x.matched && x.faculty === code)
@@ -103,7 +107,7 @@ const prodiRows = computed(() => {
     }
   >();
   for (const p of projects.value) {
-    if (p.manager === "Laboratorium" && p.ownerProdi) {
+    if (p.ownerProdi) {
       const r = map.get(p.ownerProdi) || {
         value: 0,
         projects: new Set(),
@@ -174,7 +178,7 @@ const annualModalProjects = computed(() => {
         );
       if (!attribution) return null;
       const prodis =
-        project.manager === "Laboratorium" && project.ownerProdi
+        project.ownerProdi
           ? [project.ownerProdi]
           : project.people
               .filter((x) => x.matched && x.faculty === faculty.value)
@@ -268,7 +272,23 @@ function shortProdiLabel(name: string) {
   return `${lines[0]}\n${second}…`;
 }
 const prodiChartHeight = computed(() =>
-  Math.min(760, Math.max(390, prodiRows.value.slice(0, 12).length * 58 + 70)),
+  adaptiveCategoryChartHeight(prodiRows.value.length),
+);
+const prodiScrollEl = ref<HTMLElement | null>(null);
+const showProdiScrollHint = ref(false);
+function updateProdiScrollHint() {
+  const el = prodiScrollEl.value;
+  showProdiScrollHint.value = Boolean(
+    el && hasScrollBelow(el.scrollHeight, el.clientHeight, el.scrollTop),
+  );
+}
+watch(
+  () => `${faculty.value}:${prodiChartHeight.value}`,
+  async () => {
+    await nextTick();
+    if (prodiScrollEl.value) prodiScrollEl.value.scrollTop = 0;
+    updateProdiScrollHint();
+  },
 );
 
 const annualOption = computed(() => ({
@@ -311,12 +331,13 @@ const annualOption = computed(() => ({
   ],
 }));
 const prodiOption = computed(() => {
-  const d = [...prodiRows.value.slice(0, 12)].reverse();
+  const d = [...prodiRows.value].reverse();
   return {
     tooltip: {
       trigger: "axis",
       axisPointer: { type: "none" },
-      confine: true,
+      confine: false,
+      appendTo: () => document.body,
       formatter: (params: any[]) => {
         const name = params[0]?.name || "";
         return `<b>${name}</b><br>${params.map((p) => `${p.marker}${rpFull(p.value)}`).join("<br>")}`;
@@ -344,7 +365,7 @@ const prodiOption = computed(() => {
         barWidth: 24,
         barCategoryGap: "45%",
         itemStyle: { color: "#5b7f37", borderRadius: [0, 5, 5, 0] },
-        emphasis: { focus: "self", itemStyle: { opacity: 0.78 } },
+        ...interactiveBarStates,
         label: {
           show: true,
           position: "right",
@@ -375,7 +396,7 @@ const selectedProdiProjects = computed(() => {
   if (!name) return [];
   return projects.value
     .map((project) => {
-      if (project.manager === "Laboratorium")
+      if (project.ownerProdi)
         return project.ownerProdi === name
           ? { project, attribution: project.value }
           : null;
@@ -407,7 +428,7 @@ function closeProdiModal() {
   prodiModalOpen.value = false;
 }
 function openProdiCategory(dataIndex: number) {
-  const d = [...prodiRows.value.slice(0, 12)].reverse();
+  const d = [...prodiRows.value].reverse();
   const row = d[dataIndex];
   if (row) openProdiModal({ name: row.name });
 }
@@ -424,8 +445,13 @@ watch(selectedProdiName, () => {
 onMounted(() => {
   if (!s.data) s.load();
   window.addEventListener("keydown", onEscape);
+  window.addEventListener("resize", updateProdiScrollHint);
+  nextTick(updateProdiScrollHint);
 });
-onBeforeUnmount(() => window.removeEventListener("keydown", onEscape));
+onBeforeUnmount(() => {
+  window.removeEventListener("keydown", onEscape);
+  window.removeEventListener("resize", updateProdiScrollHint);
+});
 
 const sourceModalOpen = ref(false);
 const selectedSourceName = ref("");
@@ -441,7 +467,7 @@ const sourceModalProjects = computed(() => {
         .reduce((sum, c) => sum + c.value * share, 0);
       if (!attribution) return null;
       const prodis =
-        project.manager === "Laboratorium" && project.ownerProdi
+        project.ownerProdi
           ? [project.ownerProdi]
           : project.people
               .filter((x) => x.matched && x.faculty === faculty.value)
@@ -513,7 +539,7 @@ const sourceOption = computed(() => {
         type: "bar",
         data: d.map((x) => x.value),
         itemStyle: { color: "#2d6a8a", borderRadius: [0, 5, 5, 0] },
-        emphasis: { focus: "self", itemStyle: { opacity: 0.78 } },
+        ...interactiveBarStates,
       },
     ],
   };
@@ -667,6 +693,25 @@ const radarTable = computed(() => [
     radarScores.value[5],
   ],
 ]);
+const capacityExtremes = computed(() => {
+  const sorted = [...radarTable.value].sort(
+    (a, b) => Number(b[2]) - Number(a[2]),
+  );
+  return { highest: sorted[0], lowest: sorted[sorted.length - 1] };
+});
+const labMaximum = computed(() =>
+  Math.max(0, ...labs.value.map((project) => project.value)),
+);
+const topLabUnit = computed(() => {
+  const totals = new Map<string, number>();
+  for (const project of labs.value) {
+    const unit = project.ownerProdi || "Unit belum tersedia";
+    totals.set(unit, (totals.get(unit) || 0) + project.value);
+  }
+  return [...totals]
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => b.value - a.value)[0];
+});
 </script>
 
 <template>
@@ -764,19 +809,37 @@ const radarTable = computed(() => [
           <div>
             <h2>Distribusi Program Studi</h2>
             <p>
-              Pendanaan menurut program studi (klik bar untuk melihat rincian)
+              {{ prodiRows.length }} program studi · Klik batang untuk melihat
+              rincian
             </p>
           </div>
         </div>
-        <InteractiveChart
-          class="faculty-chart prodi-chart"
-          :style="{ height: `${prodiChartHeight}px` }"
-          :option="prodiOption"
-          clickable-category-axis="y"
-          full-row-clickable
-          @click="openProdiModal"
-          @category="openProdiCategory"
-        />
+        <div class="prodi-chart-frame">
+          <div
+            ref="prodiScrollEl"
+            class="prodi-chart-scroll"
+            @scroll="updateProdiScrollHint"
+          >
+            <InteractiveChart
+              :key="`${faculty}-${prodiRows.length}`"
+              class="faculty-chart prodi-chart"
+              :style="{ height: `${prodiChartHeight}px` }"
+              :option="prodiOption"
+              clickable-category-axis="y"
+              full-row-clickable
+              @click="openProdiModal"
+              @category="openProdiCategory"
+            />
+          </div>
+          <div
+            v-if="showProdiScrollHint"
+            class="prodi-scroll-gradient"
+            aria-hidden="true"
+          ></div>
+        </div>
+        <p v-if="showProdiScrollHint" class="prodi-scroll-hint">
+          ↓ Scroll untuk melihat prodi lainnya
+        </p>
       </article>
       <article class="card chart-card">
         <div class="section-head">
@@ -791,7 +854,7 @@ const radarTable = computed(() => [
           @click="openAnnualModal"
         />
       </article>
-      <article class="card radar-values">
+      <article class="card radar-values experiment-card">
         <div class="section-head">
           <div>
             <h2>Indikator Kapasitas Riset</h2>
@@ -810,12 +873,30 @@ const radarTable = computed(() => [
             <tr v-for="r in radarTable" :key="String(r[0])">
               <td>{{ r[0] }}</td>
               <td>{{ r[1] }}</td>
-              <td>
-                <b>{{ r[2] }}/100</b>
+              <td class="relative-position-cell">
+                <div class="mini-bar-row">
+                  <div class="mini-bar-track" aria-hidden="true">
+                    <span
+                      :style="{ width: `${normalizedBarPercent(Number(r[2]), 100)}%` }"
+                    ></span>
+                  </div>
+                  <b>{{ r[2] }}/100</b>
+                </div>
               </td>
             </tr>
           </tbody>
         </table>
+        <div class="experiment-summary">
+          <span>Rentang posisi relatif</span>
+          <strong>
+            Tertinggi: {{ capacityExtremes.highest?.[0] }}
+            ({{ capacityExtremes.highest?.[2] }}/100)
+          </strong>
+          <small>
+            Terendah: {{ capacityExtremes.lowest?.[0] }}
+            ({{ capacityExtremes.lowest?.[2] }}/100)
+          </small>
+        </div>
       </article>
       <article class="card chart-card">
         <div class="section-head">
@@ -826,7 +907,7 @@ const radarTable = computed(() => [
         </div>
         <InteractiveChart class="radar-chart" :option="radarOption" />
       </article>
-      <article v-if="labs.length" class="card chart-card">
+      <article v-if="labs.length" class="card chart-card experiment-card">
         <div class="section-head">
           <div>
             <h2>Pendapatan Laboratorium</h2>
@@ -848,12 +929,22 @@ const radarTable = computed(() => [
                 <td>{{ p.year }}</td>
                 <td>{{ displayProdiName(p.ownerProdi || "") }}</td>
                 <td>{{ p.subject }}</td>
-                <td>
+                <td class="lab-value-cell">
                   <b>{{ rpFull(p.value) }}</b>
+                  <div class="mini-bar-track lab-mini-bar" aria-hidden="true">
+                    <span
+                      :style="{ width: `${normalizedBarPercent(p.value, labMaximum)}%` }"
+                    ></span>
+                  </div>
                 </td>
               </tr>
             </tbody>
           </table>
+        </div>
+        <div v-if="topLabUnit" class="experiment-summary">
+          <span>Pendapatan laboratorium terbesar</span>
+          <strong>{{ displayProdiName(topLabUnit.name) }}</strong>
+          <small>{{ rpFull(topLabUnit.value) }}</small>
         </div>
       </article>
     </section>

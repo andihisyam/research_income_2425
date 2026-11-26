@@ -3,8 +3,9 @@
 from __future__ import annotations
 import csv, json, re, hashlib
 from collections import defaultdict
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
+from openpyxl import load_workbook
 
 ROOT=Path(__file__).resolve().parents[1]
 WORK=ROOT.parent
@@ -62,6 +63,41 @@ LAB_CANONICAL_PRODI={
     'Teknik Sipil':'Program Studi Teknik Sipil',
 }
 
+HIT_FACULTY={
+    'Agama Islam':'FAI','Ekonomi dan Bisnis':'FEB','Farmasi':'FF',
+    'Geografi':'FG','Hukum':'FHIP','Kedokteran':'FK',
+    'Kedokteran Gigi':'FKG','Psikologi':'Fapsi','Teknik':'FT',
+}
+HIT_STATUSES={'Disetujui','Laporan','Monev','Revisi Laporan','Selesai'}
+
+def hit_rows():
+    sheet=load_workbook(ROOT/'data mybima.xlsx',read_only=True,data_only=True)['1_Ajuan']
+    records=sheet.iter_rows(values_only=True)
+    index={name:i for i,name in enumerate(next(records))}
+    result=[]
+    for row in records:
+        submitted=row[index['Tgl Ajuan']]
+        year=submitted.year if isinstance(submitted,date) else 0
+        period=clean(row[index['Periode']],'')
+        status=clean(row[index['Status']],'')
+        if year not in (2024,2025) or status not in HIT_STATUSES: continue
+        faculty_raw=clean(row[index['Fakultas']])
+        result.append({
+            'id':str(row[index['ID']]),'year':year,'period':period,
+            'title':clean(row[index['Judul']],'Judul belum tersedia'),
+            'lead':clean(row[index['Ketua']],'Nama belum tersedia'),
+            'leadNik':clean(row[index['NIK Ketua']],'—'),
+            'faculty':HIT_FACULTY.get(faculty_raw,faculty_raw),
+            'facultyRaw':faculty_raw,'prodi':clean(row[index['Prodi']]),
+            'scheme':clean(row[index['Nama Skema']],clean(row[index['Skema']],'HIT')),
+            'researchType':clean(row[index['Jenis Penelitian']],'—'),
+            'status':status,'approvedValue':n(row[index['Dana Disetujui']]),
+            'proposedValue':n(row[index['Usulan Dana Total']] or row[index['Usulan Dana']]),
+            'sdg':clean(row[index['SDG Utama']],'—'),
+        })
+    assert len(result)==178 and sum(x['approvedValue'] for x in result)==6668674500
+    return result
+
 def main():
     comp_all=rows(REV/'PROJECT_LEVEL_DATA'/'project_components.csv')
     comps=[]
@@ -103,6 +139,12 @@ def main():
         faculties=[owner_faculty] if owner_faculty else (sorted(set(x['faculty'] for x in people)) or ['Belum terpetakan'])
         prodis=[owner_prodi] if owner_prodi else (sorted(set(x['prodi'] for x in people)) or ['Belum terpetakan'])
         projects.append({'projectId':pid,'year':n(r['year']),'title':clean(r['title'],'Judul belum tersedia'),'manager':manager,'subject':clean(r['the_subject_area'],'Belum terpetakan'),'program':clean(r['scheme']),'sourceRaw':source_label(r['funder'],r['unit_pengelola']),'sourceStandard':source_label(r['funder'],r['unit_pengelola']),'categories':sorted(set(x['category'] for x in cs)),'value':value,'componentCount':len(cs),'people':people,'internalPeopleNames':[x['name'] for x in people],'faculties':faculties,'prodis':prodis,'ownerFaculty':owner_faculty,'ownerProdi':owner_prodi})
+    hit=hit_rows()
+    for r in hit:
+        pid=f"HIT-{r['id']}"
+        comps.append({'componentId':f'{pid}-DANA','projectId':pid,'year':r['year'],'month':'—','manager':'DPPM','subject':'Belum terpetakan','program':'HIT','sourceRaw':'HIT','sourceStandard':'HIT','sourceNote':'Dana hibah internal HIT.','category':'Non-Industri','value':r['approvedValue'],'sourceCell':f"1_Ajuan!ID={r['id']}"})
+        projects.append({'projectId':pid,'year':r['year'],'title':r['title'],'manager':'DPPM','subject':'Belum terpetakan','program':'HIT','sourceRaw':'HIT','sourceStandard':'HIT','categories':['Non-Industri'],'value':r['approvedValue'],'componentCount':1,'people':[],'internalPeopleNames':[r['lead']],'faculties':[r['faculty']],'prodis':[r['prodi']],'ownerFaculty':r['faculty'],'ownerProdi':r['prodi'],'status':r['status']})
+    (OUT/'hit_projects.json').write_text(json.dumps(hit,ensure_ascii=False,indent=2),encoding='utf-8')
     annual=[]
     for y in (2024,2025):
         yc=[x for x in comps if x['year']==y]
@@ -111,7 +153,7 @@ def main():
     faculty_profiles=[{'faculty':r['faculty'],'allLecturers':n(r.get('all_lecturers')),'uniqueInvolved':n(r.get('unique_involved')),'participationRate':f(r.get('participation_rate')),'medianFractional':f(r.get('median_fractional'))} for r in rows(REV/'REVISED_ANALYSIS'/'faculty_analysis.csv') if r.get('faculty')]
     payload={'generatedAt':datetime.now().astimezone().isoformat(timespec='seconds'),'sourceRevisionMtime':datetime.fromtimestamp((REV/'PROJECT_LEVEL_DATA'/'project_level.csv').stat().st_mtime).astimezone().isoformat(timespec='seconds'),'annual':annual,'components':comps,'projects':projects,'facultyProfiles':faculty_profiles,'qa':metrics,'groupingMethod':'ID proyek dibentuk konservatif dari tahun, unit pengelola, judul ternormalisasi, sheet sumber, dan baris sumber; baris hanya digabung bila seluruh kunci sama. Karena deduplikasi lintas sumber belum dibuktikan independen, jumlah ditulis sebagai proyek teridentifikasi.'}
     (OUT/'dashboard.json').write_text(json.dumps(payload,ensure_ascii=False,separators=(',',':')),encoding='utf-8')
-    metadata={'refreshDate':payload['generatedAt'],'sources':['Research Income _ Januari - Desember 24 dan 25.xlsx','Research_Income_Tracker_2024_2025.xlsx','Keluaran final PHASE3_FRACTIONAL_ATTRIBUTION_REVISION'],'baseline':annual,'coverage':{'matchedFraction':metrics['fraction_matched'],'unallocatedFraction':metrics['fraction_unallocated'],'withoutInternalNames':metrics['projects_without_names_value']},'limitations':['Snapshot statis, bukan data waktu nyata.','DPPM dapat mencerminkan unit/program yang tercatat; pemberi dana akhir tidak disimpulkan tanpa verifikasi.','Pendanaan proyek dipetakan secara proporsional melalui personel internal; pendapatan laboratorium dipetakan langsung melalui program studi/unit pemilik yang tercatat pada sumber.','Jumlah proyek adalah proyek teridentifikasi dengan pengelompokan konservatif, bukan klaim deduplikasi universal.']}
+    metadata={'refreshDate':payload['generatedAt'],'sources':['Research Income _ Januari - Desember 24 dan 25.xlsx','Research_Income_Tracker_2024_2025.xlsx','data mybima.xlsx','Keluaran final PHASE3_FRACTIONAL_ATTRIBUTION_REVISION'],'baseline':annual,'coverage':{'matchedFraction':metrics['fraction_matched'],'unallocatedFraction':metrics['fraction_unallocated'],'withoutInternalNames':metrics['projects_without_names_value']},'limitations':['Snapshot statis, bukan data waktu nyata.','DPPM dapat mencerminkan unit/program yang tercatat; pemberi dana akhir tidak disimpulkan tanpa verifikasi.','Pendanaan proyek dipetakan secara proporsional melalui personel internal; pendapatan laboratorium dan HIT dipetakan langsung melalui program studi/unit pemilik yang tercatat pada sumber.','Tahun HIT mengikuti tahun pada Tgl Ajuan, sama dengan Pivot Table 1 pada data mybima.xlsx.','Jumlah proyek adalah proyek teridentifikasi dengan pengelompokan konservatif, bukan klaim deduplikasi universal.']}
     (OUT/'metadata.json').write_text(json.dumps(metadata,ensure_ascii=False,indent=2),encoding='utf-8')
     print(f"Terbangun: {len(comps)} komponen, {len(projects)} proyek teridentifikasi, {sum(len(p['people']) for p in projects)} relasi.")
 if __name__=='__main__': main()

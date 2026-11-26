@@ -80,12 +80,42 @@
   height: auto;
   min-height: 0;
   min-width: 0;
+  margin-bottom: 0;
 }
 .faculty-main-grid .faculty-chart {
   height: 360px;
 }
 .faculty-main-grid .prodi-chart {
   height: auto;
+}
+.prodi-chart-frame {
+  position: relative;
+}
+.prodi-chart-scroll {
+  max-height: 450px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.prodi-chart-scroll .prodi-chart {
+  width: 100%;
+  min-height: 220px;
+}
+.prodi-scroll-gradient {
+  position: absolute;
+  z-index: 2;
+  right: 12px;
+  bottom: 0;
+  left: 0;
+  height: 64px;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.96));
+}
+.prodi-scroll-hint {
+  margin: 7px 0 0;
+  color: #5f6f66;
+  font-size: 0.82rem;
+  font-weight: 650;
+  text-align: center;
 }
 .faculty-chart {
   height: 360px;
@@ -138,6 +168,69 @@
 }
 .radar-values {
   min-width: 0;
+}
+.experiment-card {
+  display: flex;
+  flex-direction: column;
+}
+.relative-position-cell {
+  width: 42%;
+}
+.mini-bar-row {
+  display: grid;
+  grid-template-columns: minmax(70px, 1fr) auto;
+  gap: 9px;
+  align-items: center;
+}
+.mini-bar-track {
+  height: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e5ece8;
+}
+.mini-bar-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #5b7f37;
+}
+.lab-value-cell {
+  min-width: 165px;
+}
+.lab-value-cell b {
+  white-space: nowrap;
+}
+.lab-mini-bar {
+  margin-top: 7px;
+}
+.experiment-summary {
+  margin-top: auto;
+  padding: 13px 14px;
+  border: 1px solid #dce7e1;
+  border-radius: 10px;
+  background: #f2f7f4;
+  color: #40524a;
+}
+.experiment-summary span,
+.experiment-summary strong,
+.experiment-summary small {
+  display: block;
+}
+.experiment-summary span {
+  margin-bottom: 5px;
+  color: #64746c;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.experiment-summary strong {
+  color: #174a36;
+  font-size: 13px;
+}
+.experiment-summary small {
+  margin-top: 4px;
+  color: #687970;
 }
 .faculty-pagination {
   display: flex;
